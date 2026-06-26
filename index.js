@@ -8,32 +8,36 @@ app.use(cors());
 // مفتاح TMDB الخاص بك
 const TMDB_API_KEY = 'fe989735ac851dfb7a139a3dc228addd'; 
 
-// ترويسات عامة للظهور كمتصفح
-const HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-    'Referer': 'https://embed.su/'
-};
-
 app.get('/', (req, res) => {
-    res.json({ status: "Pro API + Extractor is Live!" });
+    res.json({ status: "Ultimate API (Embeds + Torrents) is Live!" });
 });
 
-// ==========================================
-// 1. مسار البحث (لجلب قائمة السيرفرات)
-// ==========================================
 app.get('/search', async (req, res) => {
     const movieName = req.query.q;
     if (!movieName) return res.status(400).json({ error: "الرجاء إرسال اسم الفيلم" });
 
     try {
-        const tmdbUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(movieName)}&language=ar`;
-        const tmdbResponse = await axios.get(tmdbUrl);
+        // 1. البحث الأولي في TMDB
+        const tmdbSearchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(movieName)}&language=ar`;
+        const searchRes = await axios.get(tmdbSearchUrl);
         
-        if (tmdbResponse.data.results.length === 0) {
+        if (searchRes.data.results.length === 0) {
             return res.json({ success: false, message: "لم يتم العثور على الفيلم" });
         }
 
-        const movie = tmdbResponse.data.results[0];
+        const movie = searchRes.data.results[0];
+        const tmdbId = movie.id;
+
+        // 2. جلب تفاصيل الفيلم العميقة (للحصول على رقم IMDB المطلوب للتورنت)
+        const tmdbDetailsUrl = `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${TMDB_API_KEY}&language=ar`;
+        const detailsRes = await axios.get(tmdbDetailsUrl);
+        const imdbId = detailsRes.data.imdb_id;
+
+        // 3. صيد روابط التورنت من YTS
+        let torrents = [];
+        if (imdbId) {
+            try {
+                const yts
         const tmdbId = movie.id;
 
         res.json({
