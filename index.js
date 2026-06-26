@@ -5,24 +5,17 @@ const app = express();
 app.get('/search', async (req, res) => {
     const movieName = req.query.q;
     try {
-        // إضافة User-Agent للتمويه
-        const config = { headers: { 'User-Agent': 'Mozilla/5.0' } };
-
-        // 1. بحث TMDB
-        const tmdbRes = await axios.get(`https://api.themoviedb.org/3/search/movie?api_key=fe989735ac851dfb7a139a3dc228addd&query=${encodeURIComponent(movieName)}`, config);
+        // نستخدم وكيل وسيط لتجاوز الحظر
+        const proxy = "https://corsproxy.io/?"; 
+        
+        const tmdbRes = await axios.get(`https://api.themoviedb.org/3/search/movie?api_key=fe989735ac851dfb7a139a3dc228addd&query=${encodeURIComponent(movieName)}`);
         const movie = tmdbRes.data.results[0];
-        
-        // 2. جلب الـ IMDB
-        const detailsRes = await axios.get(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=fe989735ac851dfb7a139a3dc228addd`, config);
-        const imdbId = detailsRes.data.imdb_id;
+        const imdbId = (await axios.get(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=fe989735ac851dfb7a139a3dc228addd`)).data.imdb_id;
 
-        // 3. الاتصال بمحرك التورنت
-        const torrentRes = await axios.get(`https://torrentio.strem.fun/stream/movie/${imdbId}.json`, config);
+        // الاتصال عبر الوكيل لتخطي حظر الـ 403
+        const torrentUrl = `https://torrentio.strem.fun/stream/movie/${imdbId}.json`;
+        const torrentRes = await axios.get(proxy + encodeURIComponent(torrentUrl));
         
-        if (!torrentRes.data.streams || torrentRes.data.streams.length === 0) {
-            return res.json({ error: "لا توجد نتائج تورنت لهذا الفيلم" });
-        }
-
         const magnet = `magnet:?xt=urn:btih:${torrentRes.data.streams[0].infoHash}`;
 
         res.json({
@@ -31,7 +24,7 @@ app.get('/search', async (req, res) => {
             magnet_link: magnet
         });
     } catch (error) {
-        res.status(500).json({ error: "تعذر الاتصال بالمصادر: " + error.message });
+        res.status(500).json({ error: "تعذر الاتصال: " + error.message });
     }
 });
 
